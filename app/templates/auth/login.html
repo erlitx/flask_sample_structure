@@ -1,9 +1,17 @@
-{% extends "/auth/base.html" %}
+{% extends "auth/base.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
 
 {% block content %}
+
+    {% for message in get_flashed_messages() %}
+    <div class="alert alert-warning">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        {{ message }}
+    </div>
+    {% endfor %}
+
 <br/>
-<div class="page-header">
+<div class="page-header" align="center">
     <h1>Login</h1>
 </div>
 <div class="container">
@@ -11,9 +19,10 @@
         <div class="col-md-4">
         </div>
         <div class="col-md-4">
-            {{ wtf.quick_form(form) }}
+            {{ wtf.quick_form(form)}}
         </div>
 </div>
+
 
 
 {% endblock %}

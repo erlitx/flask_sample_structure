@@ -31,7 +31,7 @@
 <div class="container">
 {% for user in users %}
     <ul>
-        <li>{{ user.id }} - {{ user.email }} - {{ user.username }} - {{ user.role.name }}</li>
+        <li>{{ user.id }} - {{ user.email }} - {{ user.username }} - {{ user.role.name }} - {{ user.confirmed }}</li>
 
     </ul>
 {% endfor %}

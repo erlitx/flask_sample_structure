@@ -2,19 +2,39 @@ from flask import render_template, flash, redirect, url_for, request
 from . import auth
 from .forms import LoginForm
 from ..models import User, Role
-from .forms import RoleForm, UserForm
+from ..email import send_email
+from .forms import RoleForm, UserForm, RegistrationForm
 from werkzeug.security import generate_password_hash, check_password_hash
 from .. import db
+from flask_login import login_user, logout_user, login_required, current_user
 
 @auth.route('/' , methods=['GET', 'POST'])
 def login():
+
     form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data.lower()).first()
+        if user is not None and user.verify_password(form.password.data):
+            login_user(user, form.remember_me.data)
+            next = request.args.get('next')
+            if next is None or not next.startswith('/'):
+                next = url_for('main.index')
+            return redirect(next)
+        flash('Invalid email or password.')
+
     return render_template('auth/login.html', form=form)
+
+@auth.route('/logout', methods=['GET', 'POST'])
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out.')
+    return redirect(url_for('auth.login'))
 
 @auth.route('/register_user' , methods=['GET', 'POST'])
 def register_user():
-    users = User.query.order_by(User.id.desc()).all()
-    form_user = UserForm()
+    users = User.query.order_by(User.id).all()
+    form_user = RegistrationForm()
     if form_user.validate_on_submit():
         user = User.query.filter_by(email=form_user.email.data).first()
         if user is None:
@@ -24,15 +44,55 @@ def register_user():
                         password_hash=hashed_pw, role_id=form_user.role.data)
             db.session.add(user)
             db.session.commit()
-            form_user.username.data = ''
-            form_user.email.data = ''
-            form_user.password.data = ''
+
+            # Generate a confirmation token with user.generate_confirmation_token() method from models.py
+            token = user.generate_confirmation_token()
+            send_email(user.email, 'Confirm Your Account',
+                       'auth/email/confirm', user=user, token=token)
+            flash(f'A confirmation email has been sent to {user.email}')
+            return redirect(url_for('auth.login'))
+
             flash(f'User {user.email} added')
-        return redirect(url_for('auth.register_user'))
-    else:
-        flash('Error: User already exists')
+            return redirect(url_for('auth.register_user'))
+
     #role = Role(name='Admin')
     return render_template('auth/register_user.html', form_user=form_user, users=users)
+
+# This route takes two arguments, token and user_id (passed as **kwargs in the send_email func as user=user and token=token)
+# In email html user=user is passed and there is a link generarted user_id=user.id and token=token is passed as token=token
+# In the route we get the token and user_id, from user_id we get the user object and check if user.confirmed is True
+# So we can check if user has already confirmed his email address without @login_required decorator and asking him to login
+@auth.route('/confirm/<token>/<user_id>')
+# @login_required
+def confirm_noauth(token, user_id):
+    user = User.query.get(user_id)
+    # Check if user confirmed column data is TRUE
+    if user.confirmed:
+        return redirect(url_for('main.index'))
+    # Call user.confirm method from models.py with argument token and check if it returns TRUE
+    if user.confirm(token):
+        # Write to database user.confirmed TRUE.
+        db.session.commit()
+        flash('You have confirmed your account. Thanks!')
+    else:
+        flash('The confirmation link is invalid or has expired.')
+    return redirect(url_for('main.index'))
+
+#This is route to confirm email address but onlu after user has logged in because we need current_user object
+# @auth.route('/confirm/<token>')
+# @login_required
+# def confirm(token):
+#     # Check if user confirmed column data is TRUE
+#     if current_user.confirmed:
+#         return redirect(url_for('main.index'))
+#     # Call user.confirm method from models.py with argument token and check if it returns TRUE
+#     if current_user.confirm(token):
+#         # Write to database user.confirmed TRUE.
+#         db.session.commit()
+#         flash('You have confirmed your account. Thanks!')
+#     else:
+#         flash('The confirmation link is invalid or has expired.')
+#     return redirect(url_for('main.index'))
 
 @auth.route('/register_role' , methods=['GET', 'POST'])
 def register_role():
@@ -47,3 +107,5 @@ def register_role():
         flash('User Added')
     #role = Role(name='Admin')
     return render_template('auth/register_role.html', form_role=form_role, roles=roles)
+
+

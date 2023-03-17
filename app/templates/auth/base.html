@@ -4,8 +4,9 @@
 
 {% block head %}
 {{ super() }}
-<link rel="shortcut icon" href="#" type="image/x-icon">
-<link rel="icon" href="#" type="image/x-icon">
+
+<link rel="icon" href="{{ url_for('static', filename='/icon/favicon.ico') }}" type="image/x-icon">
+
 {% endblock %}
 
 {% block navbar %}
@@ -29,6 +30,7 @@
                 <li><a href="{{ url_for('auth.logout') }}">Log Out - {{ current_user.email }}</a></li>
                 {% else %}
                 <li><a href="{{ url_for('auth.login') }}">Log In</a></li>
+                <li><a href="{{ url_for('auth.register_user') }}">Register</a></li>
                 {% endif %}
             </ul>
         </div>

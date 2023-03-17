@@ -10,6 +10,9 @@ class LoginForm(FlaskForm):
     remember_me = BooleanField('Keep me logged in')
     submit = SubmitField('Log In')
 
+class AboutForm(FlaskForm):
+    location = StringField('Location')
+
 
 class RoleForm(FlaskForm):
     name = StringField('Role Name', validators=[DataRequired(), Length(1, 64)])

@@ -1,0 +1,13 @@
+{% extends "auth/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+<div class="col-md-4">
+    <div class="page-header">
+        <h3>Your account have been confirmed</h3>
+        <p>Please <a href="{{url_for('auth.login')}}">login</a> to proceed.</p>
+
+    </div>
+</div>
+
+{% endblock %}

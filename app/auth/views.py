@@ -10,26 +10,30 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 @auth.route('/' , methods=['GET', 'POST'])
 def login():
-
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data.lower()).first()
         if user is not None and user.verify_password(form.password.data):
-            login_user(user, form.remember_me.data)
-            next = request.args.get('next')
-            if next is None or not next.startswith('/'):
-                next = url_for('main.index')
-            return redirect(next)
-        flash('Invalid email or password.')
+            if user.confirmed:
+                login_user(user, form.remember_me.data)
+                current_user.ping()
+                db.session.commit()
+                next = request.args.get('next')
+                if next is None or not next.startswith('/'):
+                    next = url_for('main.index')
+                return redirect(next)
+            return redirect(url_for('auth.unconfirmed'))
 
     return render_template('auth/login.html', form=form)
+
 
 @auth.route('/logout', methods=['GET', 'POST'])
 @login_required
 def logout():
     logout_user()
     flash('You have been logged out.')
-    return redirect(url_for('auth.login'))
+    return redirect(url_for('main.index'))
+
 
 @auth.route('/register_user' , methods=['GET', 'POST'])
 def register_user():
@@ -58,6 +62,21 @@ def register_user():
     #role = Role(name='Admin')
     return render_template('auth/register_user.html', form_user=form_user, users=users)
 
+
+@auth.route('/reconfirm', methods=['GET', 'POST'])
+def reconfirm():
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data.lower()).first()
+        if user is not None and user.verify_password(form.password.data):
+            token = user.generate_confirmation_token()
+            send_email(user.email, 'Confirm Your Account',
+               'auth/email/confirm', user=user, token=token)
+            flash('A new confirmation email has been sent to you by email.')
+
+    return render_template('auth/reconfirm.html', form=form)
+
+
 # This route takes two arguments, token and user_id (passed as **kwargs in the send_email func as user=user and token=token)
 # In email html user=user is passed and there is a link generarted user_id=user.id and token=token is passed as token=token
 # In the route we get the token and user_id, from user_id we get the user object and check if user.confirmed is True
@@ -74,9 +93,10 @@ def confirm_noauth(token, user_id):
         # Write to database user.confirmed TRUE.
         db.session.commit()
         flash('You have confirmed your account. Thanks!')
+        return render_template('auth/confirmed.html')
     else:
-        flash('The confirmation link is invalid or has expired.')
-    return redirect(url_for('main.index'))
+        return 'The confirmation link is invalid or has expired.'
+
 
 #This is route to confirm email address but onlu after user has logged in because we need current_user object
 # @auth.route('/confirm/<token>')
@@ -94,7 +114,14 @@ def confirm_noauth(token, user_id):
 #         flash('The confirmation link is invalid or has expired.')
 #     return redirect(url_for('main.index'))
 
-@auth.route('/register_role' , methods=['GET', 'POST'])
+@auth.route('/unconfirmed')
+def unconfirmed():
+    # if current_user.is_anonymous or current_user.confirmed:
+    #     return redirect(url_for('main.index'))
+    return render_template('auth/unconfirmed.html')
+
+
+@auth.route('/register_role', methods=['GET', 'POST'])
 def register_role():
     roles = Role.query.order_by(Role.id.desc()).all()
     form_role = RoleForm()

@@ -4,11 +4,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bootstrap import Bootstrap
 from flask_mail import Mail
+from flask_moment import Moment
 
 # Initialize the database
 db = SQLAlchemy()
 mail = Mail()
-
+moment = Moment()
 bootstrap = Bootstrap()
 
 loging_manager = LoginManager()
@@ -23,6 +24,7 @@ def create_app(config_name):
     db.init_app(app)
     mail.init_app(app)
     bootstrap.init_app(app)
+    moment.init_app(app)
 
     # Initialize the login manager
     loging_manager.init_app(app)

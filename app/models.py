@@ -4,6 +4,7 @@ from flask_login import UserMixin
 from . import loging_manager
 from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 from flask import current_app
+from datetime import datetime
 
 
 # Register the user_loader function to the login manager to get the user info from the db
@@ -31,6 +32,13 @@ class User(db.Model, UserMixin):
     role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
     password_hash = db.Column(db.String(128))
     confirmed = db.Column(db.Boolean, default=False)
+    location = db.Column(db.String(64))
+    member_since = db.Column(db.DateTime(), default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def ping(self):
+        self.last_seen = datetime.utcnow()
+        db.session.add(self)
 
     @property
     def password(self):
